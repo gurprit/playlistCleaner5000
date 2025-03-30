@@ -1,8 +1,3 @@
-app.get("/", (req, res) => {
-    res.send("Spotify API is running! Go to <a href='/login'>Login with Spotify</a>");
-});
-
-
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
@@ -17,6 +12,11 @@ const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI;
 const AUTH_URL = "https://accounts.spotify.com/authorize";
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
+
+// Fix: Root route to show a message
+app.get("/", (req, res) => {
+    res.send("Spotify API is running! Go to <a href='/login'>Login with Spotify</a>");
+});
 
 // Step 1: Redirect user to Spotify login
 app.get("/login", (req, res) => {
@@ -76,4 +76,5 @@ app.get("/user-info", async (req, res) => {
 });
 
 // Start server
-app.listen(3000, () => console.log("Server running on http://localhost:3000"));
+const PORT = 3000;
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
