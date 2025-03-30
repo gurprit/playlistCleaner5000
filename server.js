@@ -1,3 +1,8 @@
+app.get("/", (req, res) => {
+    res.send("Spotify API is running! Go to <a href='/login'>Login with Spotify</a>");
+});
+
+
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
