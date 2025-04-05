@@ -1,17 +1,16 @@
-const cookieParser = require("cookie-parser");
-const app = express();
-app.use(cookieParser());
-
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 const querystring = require("querystring");
+const cookieParser = require("cookie-parser");
 
+const app = express(); // ✅ NOW it's safe
 
+app.use(cookieParser());
 app.use(express.static("public"));
-
 app.use(cors());
+
 
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
