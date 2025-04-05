@@ -5,6 +5,8 @@ const axios = require("axios");
 const querystring = require("querystring");
 
 const app = express();
+app.use(express.static("public"));
+
 app.use(cors());
 
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
@@ -74,6 +76,37 @@ app.get("/user-info", async (req, res) => {
         res.send("Error fetching user data: " + error.message);
     }
 });
+
+// Return basic user info
+app.get("/me", async (req, res) => {
+    const access_token = req.query.access_token || req.headers.authorization?.split(" ")[1];
+    if (!access_token) return res.status(400).send("Missing access token");
+  
+    try {
+      const response = await axios.get("https://api.spotify.com/v1/me", {
+        headers: { Authorization: `Bearer ${access_token}` },
+      });
+      res.json(response.data);
+    } catch (err) {
+      res.status(500).send("Error fetching user info");
+    }
+  });
+  
+  // Return user's playlists
+  app.get("/playlists", async (req, res) => {
+    const access_token = req.query.access_token || req.headers.authorization?.split(" ")[1];
+    if (!access_token) return res.status(400).send("Missing access token");
+  
+    try {
+      const response = await axios.get("https://api.spotify.com/v1/me/playlists", {
+        headers: { Authorization: `Bearer ${access_token}` },
+      });
+      res.json(response.data);
+    } catch (err) {
+      res.status(500).send("Error fetching playlists");
+    }
+  });
+  
 
 // Start server
 const PORT = 3000;

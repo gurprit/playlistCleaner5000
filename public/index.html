@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Spotify Playlist Cleaner</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    img { border-radius: 50%; width: 100px; }
+    .playlist { margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Spotify Playlist Cleaner 5000</h1>
+  <div id="profile"></div>
+  <h2>Your Playlists</h2>
+  <div id="playlists"></div>
+
+  <script>
+    async function fetchUserData() {
+      try {
+        const res = await fetch("/me");
+        const data = await res.json();
+
+        const profile = document.getElementById("profile");
+        profile.innerHTML = `
+          <img src="${data.images?.[0]?.url || ''}" alt="Profile Picture" />
+          <h2>${data.display_name}</h2>
+          <p>Email: ${data.email}</p>
+        `;
+
+        const playlistsRes = await fetch("/playlists");
+        const playlistsData = await playlistsRes.json();
+
+        const playlistsDiv = document.getElementById("playlists");
+        playlistsData.items.forEach(pl => {
+          const div = document.createElement("div");
+          div.className = "playlist";
+          div.innerHTML = `<strong>${pl.name}</strong> (${pl.tracks.total} tracks)`;
+          playlistsDiv.appendChild(div);
+        });
+      } catch (e) {
+        console.error("Failed to fetch user data", e);
+      }
+    }
+
+    fetchUserData();
+  </script>
+</body>
+</html>
