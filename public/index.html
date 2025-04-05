@@ -16,34 +16,49 @@
   <div id="playlists"></div>
 
   <script>
-    async function fetchUserData() {
-      try {
-        const res = await fetch("/me");
-        const data = await res.json();
+    // Check if access token is available in the URL query string
+    const urlParams = new URLSearchParams(window.location.search);
+    const accessToken = urlParams.get('access_token');
 
-        const profile = document.getElementById("profile");
-        profile.innerHTML = `
-          <img src="${data.images?.[0]?.url || ''}" alt="Profile Picture" />
-          <h2>${data.display_name}</h2>
-          <p>Email: ${data.email}</p>
-        `;
+    // If the access token is missing, show an error message
+    if (!accessToken) {
+      alert("Missing access token! Please log in with Spotify.");
+    } else {
+      // Store the access token in localStorage (you could also use cookies or session storage)
+      localStorage.setItem('access_token', accessToken);
 
-        const playlistsRes = await fetch("/playlists");
-        const playlistsData = await playlistsRes.json();
+      // Fetch user data with the access token
+      async function fetchUserData() {
+        try {
+          const res = await fetch(`/me?access_token=${accessToken}`);
+          const data = await res.json();
+          console.log('data ', data)
 
-        const playlistsDiv = document.getElementById("playlists");
-        playlistsData.items.forEach(pl => {
-          const div = document.createElement("div");
-          div.className = "playlist";
-          div.innerHTML = `<strong>${pl.name}</strong> (${pl.tracks.total} tracks)`;
-          playlistsDiv.appendChild(div);
-        });
-      } catch (e) {
-        console.error("Failed to fetch user data", e);
+          const profile = document.getElementById("profile");
+          profile.innerHTML = `
+            <img src="${data.images?.[0]?.url || ''}" alt="Profile Picture" />
+            <h2>${data.display_name}</h2>
+            <p>Email: ${data.email}</p>
+          `;
+
+          // Fetch playlists
+          const playlistsRes = await fetch(`/playlists?access_token=${accessToken}`);
+          const playlistsData = await playlistsRes.json();
+
+          const playlistsDiv = document.getElementById("playlists");
+          playlistsData.items.forEach(pl => {
+            const div = document.createElement("div");
+            div.className = "playlist";
+            div.innerHTML = `<strong>${pl.name}</strong> (${pl.tracks.total} tracks)`;
+            playlistsDiv.appendChild(div);
+          });
+        } catch (e) {
+          console.error("Failed to fetch user data", e);
+        }
       }
-    }
 
-    fetchUserData();
+      fetchUserData();
+    }
   </script>
 </body>
 </html>

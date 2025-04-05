@@ -1,16 +1,15 @@
-require("dotenv").config();
 const express = require("express");
+const cookieParser = require("cookie-parser");  // Move this line after express initialization
 const cors = require("cors");
 const axios = require("axios");
 const querystring = require("querystring");
-const cookieParser = require("cookie-parser");
+require("dotenv").config();
 
-const app = express(); // ✅ NOW it's safe
+const app = express();  // Initialize the express app here first
+app.use(cookieParser());  // Then use the cookie-parser middleware
 
-app.use(cookieParser());
 app.use(express.static("public"));
 app.use(cors());
-
 
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
@@ -25,7 +24,7 @@ app.get("/", (req, res) => {
 
 // Step 1: Redirect user to Spotify login
 app.get("/login", (req, res) => {
-    const scope = "user-read-private user-read-email";
+    const scope = "user-read-private user-read-email user-library-read";
     const authQuery = querystring.stringify({
         response_type: "code",
         client_id: CLIENT_ID,
@@ -56,28 +55,22 @@ app.get("/callback", async (req, res) => {
             }
         );
 
-        //const { access_token, refresh_token } = response.data;
-        const access_token =
-  req.cookies.access_token ||
-  req.query.access_token ||
-  req.headers.authorization?.split(" ")[1];
+        const { access_token, refresh_token } = response.data;
 
-        // ✅ Set access token as cookie so frontend can use it
-        res.cookie("access_token", access_token, {
-            httpOnly: false, // frontend JS needs to access it
-            maxAge: 3600000  // 1 hour
-        });
-
-        res.redirect("/"); // send user to frontend page
+        // Send token to frontend by redirecting with the access token in the URL
+        res.redirect(`/user-info?access_token=${access_token}`);
     } catch (error) {
         res.send("Error getting tokens: " + error.message);
     }
 });
 
-
 // Step 3: Fetch user info
 app.get("/user-info", async (req, res) => {
     const access_token = req.query.access_token;
+
+    if (!access_token) {
+        return res.status(400).json({ error: "Missing access token" });
+    }
 
     try {
         const response = await axios.get("https://api.spotify.com/v1/me", {
@@ -95,33 +88,32 @@ app.get("/user-info", async (req, res) => {
 app.get("/me", async (req, res) => {
     const access_token = req.query.access_token || req.headers.authorization?.split(" ")[1];
     if (!access_token) return res.status(400).json({ error: "Missing access token" });
-  
+
     try {
-      const response = await axios.get("https://api.spotify.com/v1/me", {
-        headers: { Authorization: `Bearer ${access_token}` },
-      });
-      res.json(response.data);
+        const response = await axios.get("https://api.spotify.com/v1/me", {
+            headers: { Authorization: `Bearer ${access_token}` },
+        });
+        res.json(response.data);
     } catch (err) {
-      res.status(500).json({ error: "Error fetching user info" });
+        res.status(500).json({ error: "Error fetching user info" });
     }
-  });
-  
-  // Return user's playlists
-  app.get("/playlists", async (req, res) => {
+});
+
+// Return user's playlists
+app.get("/playlists", async (req, res) => {
     const access_token = req.query.access_token || req.headers.authorization?.split(" ")[1];
     if (!access_token) return res.status(400).json({ error: "Missing access token" });
-  
+
     try {
-      const response = await axios.get("https://api.spotify.com/v1/me/playlists", {
-        headers: { Authorization: `Bearer ${access_token}` },
-      });
-      res.json(response.data);
+        const response = await axios.get("https://api.spotify.com/v1/me/playlists", {
+            headers: { Authorization: `Bearer ${access_token}` },
+        });
+        res.json(response.data);
     } catch (err) {
-      res.status(500).json({ error: "Error fetching playlists" });
+        res.status(500).json({ error: "Error fetching playlists" });
     }
-  });
-  
+});
 
 // Start server
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
