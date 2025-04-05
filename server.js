@@ -1,3 +1,6 @@
+const cookieParser = require("cookie-parser");
+app.use(cookieParser());
+
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
@@ -53,13 +56,24 @@ app.get("/callback", async (req, res) => {
             }
         );
 
-        const { access_token, refresh_token } = response.data;
+        //const { access_token, refresh_token } = response.data;
+        const access_token =
+  req.cookies.access_token ||
+  req.query.access_token ||
+  req.headers.authorization?.split(" ")[1];
 
-        res.redirect(`/user-info?access_token=${access_token}`);
+        // ✅ Set access token as cookie so frontend can use it
+        res.cookie("access_token", access_token, {
+            httpOnly: false, // frontend JS needs to access it
+            maxAge: 3600000  // 1 hour
+        });
+
+        res.redirect("/"); // send user to frontend page
     } catch (error) {
         res.send("Error getting tokens: " + error.message);
     }
 });
+
 
 // Step 3: Fetch user info
 app.get("/user-info", async (req, res) => {
@@ -80,7 +94,7 @@ app.get("/user-info", async (req, res) => {
 // Return basic user info
 app.get("/me", async (req, res) => {
     const access_token = req.query.access_token || req.headers.authorization?.split(" ")[1];
-    if (!access_token) return res.status(400).send("Missing access token");
+    if (!access_token) return res.status(400).json({ error: "Missing access token" });
   
     try {
       const response = await axios.get("https://api.spotify.com/v1/me", {
@@ -88,14 +102,14 @@ app.get("/me", async (req, res) => {
       });
       res.json(response.data);
     } catch (err) {
-      res.status(500).send("Error fetching user info");
+      res.status(500).json({ error: "Error fetching user info" });
     }
   });
   
   // Return user's playlists
   app.get("/playlists", async (req, res) => {
     const access_token = req.query.access_token || req.headers.authorization?.split(" ")[1];
-    if (!access_token) return res.status(400).send("Missing access token");
+    if (!access_token) return res.status(400).json({ error: "Missing access token" });
   
     try {
       const response = await axios.get("https://api.spotify.com/v1/me/playlists", {
@@ -103,7 +117,7 @@ app.get("/me", async (req, res) => {
       });
       res.json(response.data);
     } catch (err) {
-      res.status(500).send("Error fetching playlists");
+      res.status(500).json({ error: "Error fetching playlists" });
     }
   });
   
