@@ -1,4 +1,5 @@
 const cookieParser = require("cookie-parser");
+const app = express();
 app.use(cookieParser());
 
 require("dotenv").config();
@@ -7,7 +8,7 @@ const cors = require("cors");
 const axios = require("axios");
 const querystring = require("querystring");
 
-const app = express();
+
 app.use(express.static("public"));
 
 app.use(cors());
