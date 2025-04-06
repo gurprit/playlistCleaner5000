@@ -107,9 +107,9 @@
       <div id="loader" class="loader"></div>
 
       <div id="user-content">
-        <h2>Your Profile</h2>
+
         <div id="profile"></div>
-        <h2>Your Playlists <span id="playlist-count"></span></h2>
+
         <div id="playlists">
             </div>
       </div>
@@ -292,7 +292,7 @@
 
                 playlistsDiv.innerHTML = ''; // Clear previous entries
                 if (playlistsData.items && playlistsData.items.length > 0) {
-                     playlistCountSpan.textContent = `(${playlistsData.total})`; // Show total count
+                     //playlistCountSpan.textContent = `(${playlistsData.total})`; // Show total count
                      playlistsData.items.forEach(pl => {
                         const div = document.createElement("div");
                         div.className = "playlist";
