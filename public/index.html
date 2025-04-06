@@ -2,128 +2,260 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Spotify Playlist Cleaner</title>
+  <title>Spotify Web App Example</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    img { border-radius: 50%; width: 100px; }
-    .playlist { margin: 10px 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 20px;
+      background-color: #f8f8f8;
+      color: #333;
+    }
+    h1, h2 {
+      color: #1db954; /* Spotify green */
+    }
+    img.profile-pic {
+      border-radius: 50%;
+      width: 100px;
+      height: 100px;
+      border: 3px solid #eee;
+      vertical-align: middle;
+      margin-right: 15px;
+    }
+    .profile-info {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      background-color: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .playlist {
+      margin: 10px 0;
+      padding: 10px;
+      background-color: #fff;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border-left: 4px solid #1db954;
+    }
+    .playlist strong {
+       display: block;
+       margin-bottom: 3px;
+    }
+    .playlist span {
+        font-size: 0.9em;
+        color: #666;
+    }
+
     /* Initially hide user content */
     #user-content { display: none; }
     #login-section { display: block; } /* Show login section initially */
-    #error-message { color: red; margin-top: 10px; display: none; } /* Hidden error message area */
+
+    #error-message {
+        color: #d8000c; /* Red */
+        background-color: #ffdddd;
+        border: 1px solid #d8000c;
+        padding: 10px;
+        margin: 15px 0;
+        border-radius: 4px;
+        display: none; /* Hidden by default */
+     }
+
+     button#login-button {
+        background-color: #1db954;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 50px; /* Pill shape */
+        font-size: 1em;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+     }
+     button#login-button:hover {
+         background-color: #1aa34a;
+     }
+
+     .loader { /* Simple loading indicator */
+        border: 4px solid #f3f3f3; /* Light grey */
+        border-top: 4px solid #1db954; /* Spotify Green */
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+        display: none; /* Hidden by default */
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
   </style>
 </head>
 <body>
-  <h1>Spotify Playlist Cleaner 5000</h1>
+  <h1>Spotify Web App Example</h1>
 
   <div id="login-section">
-    <p>Please log in with Spotify to continue.</p>
-    <button onclick="window.location.href='/login'">Login with Spotify</button>
+    <p>Please log in with Spotify to view your profile and playlists.</p>
+    <button id="login-button" onclick="window.location.href='/login'">Login with Spotify</button>
   </div>
 
   <div id="error-message"></div>
 
+  <div id="loader" class="loader"></div>
+
   <div id="user-content">
+    <h2>Your Profile</h2>
     <div id="profile"></div>
     <h2>Your Playlists</h2>
     <div id="playlists"></div>
   </div>
 
   <script>
-    // Function to parse hash parameters
+    // Function to parse hash parameters from URL
     const getHashParams = () => {
       const hashParams = {};
-      let e, r = /([^&;=]+)=?([^&;]*)/g,
-          q = window.location.hash.substring(1);
+      let e;
+      const r = /([^&;=]+)=?([^&;]*)/g; // Regex to parse key-value pairs
+      const q = window.location.hash.substring(1); // Get hash string without the '#'
       while ( e = r.exec(q)) {
          hashParams[e[1]] = decodeURIComponent(e[2]);
       }
       return hashParams;
     }
 
-    // Get params from hash
-    const params = getHashParams();
-    const accessToken = params.access_token;
-    const error = params.error;
-    // const refreshToken = params.refresh_token; // Not usually handled client-side
-    // const expiresIn = params.expires_in;
-
+    // Get references to DOM elements
     const loginSection = document.getElementById('login-section');
     const userContent = document.getElementById('user-content');
     const errorMessageDiv = document.getElementById('error-message');
+    const loader = document.getElementById('loader');
+    const profileDiv = document.getElementById("profile");
+    const playlistsDiv = document.getElementById("playlists");
 
-    // Display error if present in hash
+    // Get params from URL hash
+    const params = getHashParams();
+    const accessToken = params.access_token;
+    const error = params.error;
+    const errorDetails = params.details;
+    // const expiresIn = params.expires_in; // You might want to use this for token refresh logic later
+
+    // Function to display errors
+    function displayError(message, details = '') {
+        errorMessageDiv.textContent = `Error: ${message}` + (details ? ` (${details})` : '');
+        errorMessageDiv.style.display = 'block';
+        loginSection.style.display = 'block'; // Show login button again
+        userContent.style.display = 'none';
+        loader.style.display = 'none'; // Hide loader on error
+        console.error("Displaying Error:", message, details);
+    }
+
+    // --- Main Logic ---
+    console.log("Page loaded. Checking for tokens or errors in URL hash...");
+    console.log("Hash Params:", params);
+
+    // 1. Check for errors from the callback
     if (error) {
-      errorMessageDiv.textContent = `Error during login: ${error}. Please try again.`;
-      errorMessageDiv.style.display = 'block';
-      loginSection.style.display = 'block'; // Show login button again
-      userContent.style.display = 'none';
-    } else if (accessToken) {
-        // If access token is found, hide login, show content, and fetch data
+      displayError(`Login failed: ${error}`, errorDetails || 'Please check server logs or try again.');
+      // Clean the URL hash
+      history.replaceState(null, null, ' ');
+    }
+    // 2. Check for access token
+    else if (accessToken) {
+        console.log("Access token found in URL hash.");
+        // Token found: Hide login, show loader, clear hash, fetch data
         loginSection.style.display = 'none';
-        userContent.style.display = 'block';
+        userContent.style.display = 'none'; // Keep content hidden until data is loaded
         errorMessageDiv.style.display = 'none';
+        loader.style.display = 'block'; // Show loader while fetching
 
-        // Clear the hash from the URL for cleanliness, without reloading
-        // history.pushState("", document.title, window.location.pathname + window.location.search);
-        // Or just clear the hash part:
+        // Clean the URL hash (remove token from address bar)
+        // Using replaceState avoids adding to browser history
         history.replaceState(null, null, ' ');
+        console.log("URL hash cleared.");
 
+        // --- Fetch user data using the access token ---
+        async function fetchUserData(token) {
+            console.log("Fetching user data from backend...");
+            // Use Authorization header for API requests
+            const authHeader = { 'Authorization': `Bearer ${token}` };
 
-        // Store the access token (optional, consider security implications)
-        // localStorage.setItem('access_token', accessToken);
-
-        // Fetch user data with the access token using Authorization header
-        async function fetchUserData() {
             try {
-                // --- Use Authorization Header ---
-                const authHeader = { 'Authorization': `Bearer ${accessToken}` };
+                // Fetch user profile first
+                console.log("Fetching /me...");
+                const meResponse = await fetch('/me', { headers: authHeader });
 
-                // Fetch user profile
-                const meRes = await fetch('/me', { headers: authHeader });
-                if (!meRes.ok) { // Check if fetch was successful
-                   throw new Error(`Failed to fetch profile: ${meRes.status} ${await meRes.text()}`);
+                if (!meResponse.ok) {
+                   // Try to parse error details from backend response
+                   let errorJson = {};
+                   try { errorJson = await meResponse.json(); } catch (e) { /* ignore if not json */ }
+                   throw new Error(`Failed to fetch profile: ${meResponse.status} ${meResponse.statusText}. ${errorJson.details?.error?.message || ''}`);
                 }
-                const meData = await meRes.json();
-                console.log('Profile data:', meData);
+                const meData = await meResponse.json();
+                console.log('Profile data received:', meData);
 
-                const profile = document.getElementById("profile");
-                profile.innerHTML = `
-                    <img src="${meData.images?.[0]?.url || ''}" alt="Profile Picture" />
-                    <h2>${meData.display_name}</h2>
-                    <p>Email: ${meData.email}</p> `;
+                // Display profile data
+                profileDiv.innerHTML = `
+                    <div class="profile-info">
+                        <img class="profile-pic" src="${meData.images?.[0]?.url || 'placeholder.png'}" alt="Profile Picture" />
+                        <div>
+                            <strong>${meData.display_name || 'N/A'}</strong><br>
+                            <span>Email: ${meData.email || 'N/A'}</span><br> <span>Followers: ${meData.followers?.total ?? 'N/A'}</span>
+                        </div>
+                    </div>
+                `;
 
                 // Fetch playlists
-                const playlistsRes = await fetch('/playlists', { headers: authHeader });
-                 if (!playlistsRes.ok) { // Check if fetch was successful
-                   throw new Error(`Failed to fetch playlists: ${playlistsRes.status} ${await playlistsRes.text()}`);
+                console.log("Fetching /playlists...");
+                const playlistsResponse = await fetch('/playlists', { headers: authHeader });
+                 if (!playlistsResponse.ok) {
+                    let errorJson = {};
+                    try { errorJson = await playlistsResponse.json(); } catch (e) { /* ignore */ }
+                    throw new Error(`Failed to fetch playlists: ${playlistsResponse.status} ${playlistsResponse.statusText}. ${errorJson.details?.error?.message || ''}`);
                 }
-                const playlistsData = await playlistsRes.json();
-                console.log('Playlists data:', playlistsData);
+                const playlistsData = await playlistsResponse.json();
+                console.log('Playlists data received:', playlistsData);
 
-                const playlistsDiv = document.getElementById("playlists");
+                // Display playlists
                 playlistsDiv.innerHTML = ''; // Clear previous entries if any
-                playlistsData.items.forEach(pl => {
-                    const div = document.createElement("div");
-                    div.className = "playlist";
-                    // Ensure pl.tracks exists before accessing total
-                    const trackCount = pl.tracks ? pl.tracks.total : 'N/A';
-                    div.innerHTML = `<strong>${pl.name}</strong> (${trackCount} tracks)`;
-                    playlistsDiv.appendChild(div);
-                });
-            } catch (e) {
-                console.error("Failed to fetch user data", e);
-                errorMessageDiv.textContent = `Error fetching data: ${e.message}. Please try logging in again.`;
-                errorMessageDiv.style.display = 'block';
-                userContent.style.display = 'none'; // Hide user content on error
-                loginSection.style.display = 'block'; // Show login button again
+                if (playlistsData.items && playlistsData.items.length > 0) {
+                    playlistsData.items.forEach(pl => {
+                        const div = document.createElement("div");
+                        div.className = "playlist";
+                        // Ensure pl.tracks exists before accessing total
+                        const trackCount = pl.tracks ? pl.tracks.total : 'N/A';
+                        div.innerHTML = `<strong>${pl.name || 'Untitled Playlist'}</strong> <span>(${trackCount} tracks)</span>`;
+                        playlistsDiv.appendChild(div);
+                    });
+                } else {
+                    playlistsDiv.innerHTML = "<p>You don't seem to have any playlists.</p>";
+                }
+
+                // All data fetched successfully: hide loader, show content
+                loader.style.display = 'none';
+                userContent.style.display = 'block';
+                console.log("User data displayed successfully.");
+
+            } catch (fetchError) {
+                console.error("Failed during fetchUserData:", fetchError);
+                displayError('Could not load user data from backend.', fetchError.message);
+                // Optional: Clear potentially stored invalid token?
+                // localStorage.removeItem('access_token');
             }
         }
 
-        fetchUserData();
-    } else {
-        // No token and no error - Default state (login button shown via CSS)
-        console.log("No access token found. Waiting for login.");
+        // Call the function to fetch data
+        fetchUserData(accessToken);
+
+    }
+    // 3. No token and no error - Default initial state
+    else {
+        console.log("No access token or error found in hash. Displaying login button.");
+        // Login button is shown by default via CSS, no action needed here.
+        loginSection.style.display = 'block';
+        userContent.style.display = 'none';
+        errorMessageDiv.style.display = 'none';
+        loader.style.display = 'none';
     }
   </script>
 </body>
