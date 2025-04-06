@@ -7,57 +7,123 @@
     body { font-family: sans-serif; padding: 20px; }
     img { border-radius: 50%; width: 100px; }
     .playlist { margin: 10px 0; }
+    /* Initially hide user content */
+    #user-content { display: none; }
+    #login-section { display: block; } /* Show login section initially */
+    #error-message { color: red; margin-top: 10px; display: none; } /* Hidden error message area */
   </style>
 </head>
 <body>
   <h1>Spotify Playlist Cleaner 5000</h1>
-  <div id="profile"></div>
-  <h2>Your Playlists</h2>
-  <div id="playlists"></div>
+
+  <div id="login-section">
+    <p>Please log in with Spotify to continue.</p>
+    <button onclick="window.location.href='/login'">Login with Spotify</button>
+  </div>
+
+  <div id="error-message"></div>
+
+  <div id="user-content">
+    <div id="profile"></div>
+    <h2>Your Playlists</h2>
+    <div id="playlists"></div>
+  </div>
 
   <script>
-    // Check if access token is available in the URL query string
-    const urlParams = new URLSearchParams(window.location.search);
-    const accessToken = urlParams.get('access_token');
-
-    // If the access token is missing, show an error message
-    if (!accessToken) {
-      alert("Missing access token! Please log in with Spotify.");
-    } else {
-      // Store the access token in localStorage (you could also use cookies or session storage)
-      localStorage.setItem('access_token', accessToken);
-
-      // Fetch user data with the access token
-      async function fetchUserData() {
-        try {
-          const res = await fetch(`/me?access_token=${accessToken}`);
-          const data = await res.json();
-          console.log('data ', data)
-
-          const profile = document.getElementById("profile");
-          profile.innerHTML = `
-            <img src="${data.images?.[0]?.url || ''}" alt="Profile Picture" />
-            <h2>${data.display_name}</h2>
-            <p>Email: ${data.email}</p>
-          `;
-
-          // Fetch playlists
-          const playlistsRes = await fetch(`/playlists?access_token=${accessToken}`);
-          const playlistsData = await playlistsRes.json();
-
-          const playlistsDiv = document.getElementById("playlists");
-          playlistsData.items.forEach(pl => {
-            const div = document.createElement("div");
-            div.className = "playlist";
-            div.innerHTML = `<strong>${pl.name}</strong> (${pl.tracks.total} tracks)`;
-            playlistsDiv.appendChild(div);
-          });
-        } catch (e) {
-          console.error("Failed to fetch user data", e);
-        }
+    // Function to parse hash parameters
+    const getHashParams = () => {
+      const hashParams = {};
+      let e, r = /([^&;=]+)=?([^&;]*)/g,
+          q = window.location.hash.substring(1);
+      while ( e = r.exec(q)) {
+         hashParams[e[1]] = decodeURIComponent(e[2]);
       }
+      return hashParams;
+    }
 
-      fetchUserData();
+    // Get params from hash
+    const params = getHashParams();
+    const accessToken = params.access_token;
+    const error = params.error;
+    // const refreshToken = params.refresh_token; // Not usually handled client-side
+    // const expiresIn = params.expires_in;
+
+    const loginSection = document.getElementById('login-section');
+    const userContent = document.getElementById('user-content');
+    const errorMessageDiv = document.getElementById('error-message');
+
+    // Display error if present in hash
+    if (error) {
+      errorMessageDiv.textContent = `Error during login: ${error}. Please try again.`;
+      errorMessageDiv.style.display = 'block';
+      loginSection.style.display = 'block'; // Show login button again
+      userContent.style.display = 'none';
+    } else if (accessToken) {
+        // If access token is found, hide login, show content, and fetch data
+        loginSection.style.display = 'none';
+        userContent.style.display = 'block';
+        errorMessageDiv.style.display = 'none';
+
+        // Clear the hash from the URL for cleanliness, without reloading
+        // history.pushState("", document.title, window.location.pathname + window.location.search);
+        // Or just clear the hash part:
+        history.replaceState(null, null, ' ');
+
+
+        // Store the access token (optional, consider security implications)
+        // localStorage.setItem('access_token', accessToken);
+
+        // Fetch user data with the access token using Authorization header
+        async function fetchUserData() {
+            try {
+                // --- Use Authorization Header ---
+                const authHeader = { 'Authorization': `Bearer ${accessToken}` };
+
+                // Fetch user profile
+                const meRes = await fetch('/me', { headers: authHeader });
+                if (!meRes.ok) { // Check if fetch was successful
+                   throw new Error(`Failed to fetch profile: ${meRes.status} ${await meRes.text()}`);
+                }
+                const meData = await meRes.json();
+                console.log('Profile data:', meData);
+
+                const profile = document.getElementById("profile");
+                profile.innerHTML = `
+                    <img src="${meData.images?.[0]?.url || ''}" alt="Profile Picture" />
+                    <h2>${meData.display_name}</h2>
+                    <p>Email: ${meData.email}</p> `;
+
+                // Fetch playlists
+                const playlistsRes = await fetch('/playlists', { headers: authHeader });
+                 if (!playlistsRes.ok) { // Check if fetch was successful
+                   throw new Error(`Failed to fetch playlists: ${playlistsRes.status} ${await playlistsRes.text()}`);
+                }
+                const playlistsData = await playlistsRes.json();
+                console.log('Playlists data:', playlistsData);
+
+                const playlistsDiv = document.getElementById("playlists");
+                playlistsDiv.innerHTML = ''; // Clear previous entries if any
+                playlistsData.items.forEach(pl => {
+                    const div = document.createElement("div");
+                    div.className = "playlist";
+                    // Ensure pl.tracks exists before accessing total
+                    const trackCount = pl.tracks ? pl.tracks.total : 'N/A';
+                    div.innerHTML = `<strong>${pl.name}</strong> (${trackCount} tracks)`;
+                    playlistsDiv.appendChild(div);
+                });
+            } catch (e) {
+                console.error("Failed to fetch user data", e);
+                errorMessageDiv.textContent = `Error fetching data: ${e.message}. Please try logging in again.`;
+                errorMessageDiv.style.display = 'block';
+                userContent.style.display = 'none'; // Hide user content on error
+                loginSection.style.display = 'block'; // Show login button again
+            }
+        }
+
+        fetchUserData();
+    } else {
+        // No token and no error - Default state (login button shown via CSS)
+        console.log("No access token found. Waiting for login.");
     }
   </script>
 </body>
