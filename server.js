@@ -15,7 +15,7 @@ const app = express();
 app.use(cookieParser());
 // Serve files from the 'public' directory IF your index.html is there
 // If index.html is in the root, this might not be needed or needs adjustment
-// app.use(express.static("public"));
+app.use(express.static("public"));
 app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // *** Add this line to parse JSON request bodies ***
 // --- END MIDDLEWARE ---
